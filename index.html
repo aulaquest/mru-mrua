@@ -75,6 +75,7 @@
                 left: 0.75rem;
                 right: auto;
                 width: 220px;
+                font-size: 0.8rem;
             }
         }
     </style>
@@ -210,6 +211,7 @@
         let wheelRotation = 0;
         let clouds = [];
         let groundDetails = [];
+        let tableData = [];
         const CAR_WIDTH = 65;
         const WHEEL_RADIUS = 10;
 
@@ -490,7 +492,7 @@
                 if (Math.floor(time) > lastTableLogTime) {
                     lastTableLogTime = Math.floor(time);
                     tableData.push({ t: lastTableLogTime, s: position, v: velocity });
-                    if (tableData.length > 5) tableData.shift();
+                    // No se borran datos, el scroll lo maneja el CSS
                     updateDataTable();
                 }
 
@@ -535,13 +537,17 @@
             lastTimestamp = 0; time = 0; wheelRotation = 0;
             tableData = []; lastTableLogTime = -1;
             lastGraphUpdateTime = 0;
-            updateDataTable();
             
             toggleControls(false);
             updateWorldBounds();
 
             x0 = parseFloat(ui.x0Slider.value); v0 = parseFloat(ui.v0Slider.value); a = parseFloat(ui.aSlider.value);
             position = x0; velocity = v0;
+            
+            // Añadir el estado inicial (t=0) a la tabla
+            tableData.push({ t: 0, s: position, v: velocity });
+            updateDataTable();
+
             ui.timerDisplay.textContent = '0.00 s';
             ui.x0Value.textContent = `${x0.toFixed(1)} m`; ui.v0Value.textContent = `${v0.toFixed(1)} m/s`; ui.aValue.textContent = `${a.toFixed(1)} m/s²`;
             if(xChart) {
