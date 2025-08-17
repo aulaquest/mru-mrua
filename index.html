@@ -214,6 +214,7 @@
         let tableData = [];
         const CAR_WIDTH = 65;
         const WHEEL_RADIUS = 10;
+        let lastCanvasWidth = 0; // **FIX:** Variable to track width for resize events
 
         // --- Gráficas (Chart.js) ---
         function createChart(ctx, label, color) {
@@ -492,7 +493,6 @@
                 if (Math.floor(time) > lastTableLogTime) {
                     lastTableLogTime = Math.floor(time);
                     tableData.push({ t: lastTableLogTime, s: position, v: velocity });
-                    // No se borran datos, el scroll lo maneja el CSS
                     updateDataTable();
                 }
 
@@ -544,7 +544,6 @@
             x0 = parseFloat(ui.x0Slider.value); v0 = parseFloat(ui.v0Slider.value); a = parseFloat(ui.aSlider.value);
             position = x0; velocity = v0;
             
-            // Añadir el estado inicial (t=0) a la tabla
             tableData.push({ t: 0, s: position, v: velocity });
             updateDataTable();
 
@@ -627,7 +626,12 @@
             reset();
         }
         
-        window.addEventListener('resize', init);
+        window.addEventListener('resize', () => {
+            if (window.innerWidth !== lastCanvasWidth) {
+                init();
+                lastCanvasWidth = window.innerWidth;
+            }
+        });
         window.addEventListener('load', init);
     </script>
 </body>
