@@ -86,7 +86,7 @@
         <!-- Simulación y Gráficas -->
         <div class="flex-grow flex flex-col gap-4 min-h-0">
             <!-- Simulación Principal -->
-            <div id="simulationContainer" class="relative bg-gray-800 rounded-xl flex-grow min-h-[200px] sm:min-h-[250px] overflow-hidden border border-gray-700">
+            <div id="simulationContainer" class="relative bg-gray-800 rounded-xl h-[50vh] min-h-[300px] lg:h-[60vh] overflow-hidden border border-gray-700">
                 <div id="timer" class="absolute top-2 left-3 bg-black bg-opacity-50 text-white text-xl font-mono px-2 py-1 rounded-md z-20">
                     0.00 s
                 </div>
@@ -451,7 +451,7 @@
             charts.forEach((chart, index) => {
                 chart.data.labels.push(time.toFixed(1));
                 chart.data.datasets[0].data.push(dataPoints[index].toFixed(2));
-                chart.update('none'); // **FIX:** Removed data shifting
+                chart.update('none');
             });
         }
         
