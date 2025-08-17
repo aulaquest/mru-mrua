@@ -214,7 +214,7 @@
         let tableData = [];
         const CAR_WIDTH = 65;
         const WHEEL_RADIUS = 10;
-        let lastCanvasWidth = 0; // **FIX:** Variable to track width for resize events
+        let lastCanvasWidth = 0;
 
         // --- Gráficas (Chart.js) ---
         function createChart(ctx, label, color) {
@@ -451,8 +451,7 @@
             charts.forEach((chart, index) => {
                 chart.data.labels.push(time.toFixed(1));
                 chart.data.datasets[0].data.push(dataPoints[index].toFixed(2));
-                if (chart.data.labels.length > 200) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
-                chart.update('none');
+                chart.update('none'); // **FIX:** Removed data shifting
             });
         }
         
