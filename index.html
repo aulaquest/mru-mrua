@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Cinemática Avanzado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html {
+            height: 100%;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #2563eb;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            transition: transform 0.1s ease-in-out;
+        }
+        .slider-thumb:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+        }
+        .slider-thumb:disabled::-webkit-slider-thumb {
+            background-color: #4b5563;
+            cursor: not-allowed;
+        }
+        .slider-thumb::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #2563eb;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+         .slider-thumb:disabled::-moz-range-thumb {
+            background-color: #4b5563;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <main class="flex-grow flex flex-col p-4 gap-4">
+        <!-- Simulación y Gráficas -->
+        <div class="flex-grow flex flex-col gap-4 min-h-0">
+            <!-- Simulación Principal -->
+            <div class="relative bg-gray-800 rounded-xl p-2 flex-grow min-h-[200px] sm:min-h-[250px] overflow-hidden border border-gray-700">
+                <div id="timer" class="absolute top-2 left-3 bg-black bg-opacity-50 text-white text-xl font-mono px-2 py-1 rounded-md z-20">
+                    0.00 s
+                </div>
+                <canvas id="simulationCanvas" class="w-full h-full"></canvas>
+            </div>
+            
+            <!-- Contenedor de Gráficas (Oculto por defecto) -->
+            <div id="graphsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4 h-1/3 hidden">
+                <div class="bg-gray-800 p-2 rounded-xl min-h-[200px]"><canvas id="posChart"></canvas></div>
+                <div class="bg-gray-800 p-2 rounded-xl min-h-[200px]"><canvas id="velChart"></canvas></div>
+                <div class="bg-gray-800 p-2 rounded-xl min-h-[200px]"><canvas id="accChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Panel de Control -->
+        <aside class="w-full bg-gray-800 p-4 rounded-xl border-t border-gray-700 shadow-2xl">
+            <!-- Botones de Acción -->
+            <div class="flex flex-wrap justify-center items-center gap-4 pb-4 mb-4 border-b border-gray-700">
+                <button id="playPauseBtn" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 transition-all w-32">
+                    Iniciar
+                </button>
+                <button id="resetBtn" class="px-6 py-2 bg-gray-600 text-white font-semibold rounded-lg shadow-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75 transition-all">
+                    Reiniciar
+                </button>
+                <button id="toggleTableBtn" class="px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-opacity-75 transition-all">
+                    Ver Tabla
+                </button>
+                <button id="toggleGraphsBtn" class="px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-lg hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-opacity-75 transition-all">
+                    Ver Gráficas
+                </button>
+            </div>
+            <!-- Controles de Parámetros -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                <div>
+                    <label for="totalDistance" class="block text-sm font-medium mb-1 text-yellow-300">Distancia Total del Escenario</label>
+                    <div class="flex items-center gap-3">
+                        <input type="range" id="totalDistance" min="20" max="500" value="50" step="10" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                        <span id="totalDistanceValue" class="font-semibold text-white w-24 text-center bg-gray-700 rounded-md py-1 text-sm">50 m</span>
+                    </div>
+                </div>
+                <div>
+                    <label for="x0" class="block text-sm font-medium mb-1 text-blue-300">Posición Inicial (x₀)</label>
+                    <div class="flex items-center gap-3">
+                        <input type="range" id="x0" min="-25" max="25" value="0" step="1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                        <span id="x0Value" class="font-semibold text-white w-24 text-center bg-gray-700 rounded-md py-1 text-sm">0.0 m</span>
+                    </div>
+                </div>
+                <div>
+                    <label for="v0" class="block text-sm font-medium mb-1 text-green-300">Velocidad Inicial (v₀)</label>
+                    <div class="flex items-center gap-3">
+                        <input type="range" id="v0" min="-50" max="50" value="10" step="0.5" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                        <span id="v0Value" class="font-semibold text-white w-24 text-center bg-gray-700 rounded-md py-1 text-sm">10.0 m/s</span>
+                    </div>
+                </div>
+                <div>
+                    <label for="a" class="block text-sm font-medium mb-1 text-pink-300">Aceleración (a)</label>
+                    <div class="flex items-center gap-3">
+                        <input type="range" id="a" min="-2" max="2" value="-1" step="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb">
+                        <span id="aValue" class="font-semibold text-white w-24 text-center bg-gray-700 rounded-md py-1 text-sm">-1.0 m/s²</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <footer class="text-center py-3 text-gray-500 text-sm">
+        Creado por <a href="https://aulaquest.com" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">aulaquest</a>
+    </footer>
+
+    <script>
+        // --- Configuración Inicial ---
+        const ui = {
+            simCanvas: document.getElementById('simulationCanvas'),
+            posChartCanvas: document.getElementById('posChart'),
+            velChartCanvas: document.getElementById('velChart'),
+            accChartCanvas: document.getElementById('accChart'),
+            graphsContainer: document.getElementById('graphsContainer'),
+            totalDistanceSlider: document.getElementById('totalDistance'),
+            totalDistanceValue: document.getElementById('totalDistanceValue'),
+            x0Slider: document.getElementById('x0'),
+            v0Slider: document.getElementById('v0'),
+            aSlider: document.getElementById('a'),
+            x0Value: document.getElementById('x0Value'),
+            v0Value: document.getElementById('v0Value'),
+            aValue: document.getElementById('aValue'),
+            playPauseBtn: document.getElementById('playPauseBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+            toggleTableBtn: document.getElementById('toggleTableBtn'),
+            toggleGraphsBtn: document.getElementById('toggleGraphsBtn'),
+            timerDisplay: document.getElementById('timer'),
+        };
+        const sliders = [ui.totalDistanceSlider, ui.x0Slider, ui.v0Slider, ui.aSlider];
+
+        const simCtx = ui.simCanvas.getContext('2d');
+        let xChart, vChart, aChart;
+
+        // --- Variables de la Simulación ---
+        let x0, v0, a;
+        let position, velocity, time;
+        let isRunning = false;
+        let animationFrameId;
+        let lastTimestamp = 0;
+        let lastTableLogTime = -1;
+        let lastGraphUpdateTime = 0;
+        let worldMin, worldMax, worldWidth;
+        let wheelRotation = 0;
+        let clouds = [];
+        let groundDetails = [];
+        let tableData = [];
+        let showTable = false;
+        const CAR_WIDTH = 65;
+        const WHEEL_RADIUS = 10;
+
+        // --- Gráficas (Chart.js) ---
+        function createChart(ctx, label, color) {
+            return new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label, data: [], borderColor: color, backgroundColor: color + '33', borderWidth: 2, pointRadius: 0, tension: 0.1 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { color: '#9ca3af' }, grid: { color: '#4b5563' } }, y: { ticks: { color: '#9ca3af' }, grid: { color: '#4b5563' } } }, plugins: { legend: { labels: { color: '#e5e7eb' } } } }
+            });
+        }
+
+        function createCharts() {
+            if (xChart) xChart.destroy();
+            if (vChart) vChart.destroy();
+            if (aChart) aChart.destroy();
+            xChart = createChart(ui.posChartCanvas.getContext('2d'), 'Posición (m)', '#60a5fa');
+            vChart = createChart(ui.velChartCanvas.getContext('2d'), 'Velocidad (m/s)', '#4ade80');
+            aChart = createChart(ui.accChartCanvas.getContext('2d'), 'Aceleración (m/s²)', '#f472b6');
+        }
+
+        // --- Funciones de Dibujo del Escenario ---
+        function worldToScreen(x) { return ((x - worldMin) / worldWidth) * ui.simCanvas.clientWidth; }
+
+        function drawScenery() {
+            const canvasWidth = ui.simCanvas.clientWidth;
+            const canvasHeight = ui.simCanvas.clientHeight;
+            const y_road = canvasHeight * 0.7; 
+
+            const skyGradient = simCtx.createLinearGradient(0, 0, 0, y_road);
+            skyGradient.addColorStop(0, '#3b82f6');
+            skyGradient.addColorStop(1, '#93c5fd');
+            simCtx.fillStyle = skyGradient;
+            simCtx.fillRect(0, 0, canvasWidth, y_road);
+            
+            simCtx.save();
+            simCtx.beginPath();
+            simCtx.rect(0, 0, canvasWidth, canvasHeight);
+            simCtx.clip();
+
+            clouds.forEach(cloud => {
+                simCtx.fillStyle = `rgba(255, 255, 255, ${cloud.opacity})`;
+                simCtx.beginPath();
+                simCtx.ellipse(cloud.x, cloud.y, cloud.size, cloud.size * 0.6, 0, 0, Math.PI * 2);
+                simCtx.fill();
+                simCtx.ellipse(cloud.x + cloud.size * 0.8, cloud.y, cloud.size * 1.2, cloud.size * 0.8, 0, 0, Math.PI * 2);
+                simCtx.fill();
+                simCtx.ellipse(cloud.x - cloud.size * 0.8, cloud.y, cloud.size * 1.2, cloud.size * 0.8, 0, 0, Math.PI * 2);
+                simCtx.fill();
+            });
+            simCtx.restore();
+
+            const drawMountain = (color, points) => {
+                simCtx.fillStyle = color;
+                simCtx.beginPath();
+                simCtx.moveTo(points[0].x * canvasWidth, y_road);
+                for(let i = 1; i < points.length - 1; i+=2){
+                    simCtx.quadraticCurveTo(points[i].x * canvasWidth, points[i].y * y_road, points[i+1].x * canvasWidth, points[i+1].y * y_road);
+                }
+                simCtx.lineTo(points[points.length-1].x * canvasWidth, y_road);
+                simCtx.closePath();
+                simCtx.fill();
+            }
+            drawMountain('rgba(75, 85, 99, 0.8)', [{x: -0.1, y: 1}, {x: 0.2, y: 0.5}, {x: 0.4, y: 1}, {x: 0.5, y: 1}]);
+            drawMountain('rgba(55, 65, 81, 0.9)', [{x: 0.3, y: 1}, {x: 0.6, y: 0.4}, {x: 0.9, y: 1}, {x: 1.1, y: 1}]);
+
+            simCtx.fillStyle = '#16a34a';
+            simCtx.fillRect(0, y_road, canvasWidth, canvasHeight - y_road);
+
+            simCtx.fillStyle = '#78350f';
+            simCtx.fillRect(0, y_road + 10, canvasWidth, canvasHeight);
+            groundDetails.forEach(detail => {
+                simCtx.fillStyle = detail.color;
+                simCtx.beginPath();
+                simCtx.arc(detail.x, detail.y, detail.radius, 0, Math.PI * 2);
+                simCtx.fill();
+            });
+
+            simCtx.fillStyle = '#e5e7eb';
+            simCtx.font = '12px Inter';
+            simCtx.textAlign = 'center';
+            const y_line = y_road + 30;
+            simCtx.fillRect(0, y_line - 1, canvasWidth, 2);
+
+            const step = Math.pow(10, Math.floor(Math.log10(worldWidth))) / 2 || 5;
+            for (let i = Math.floor(worldMin / step) * step; i <= Math.ceil(worldMax / step) * step; i += step) {
+                const x_screen = worldToScreen(i);
+                simCtx.fillRect(x_screen - 1, y_line - 8, 2, 16);
+                simCtx.fillText(`${i.toFixed(0)}m`, x_screen, y_line + 25);
+            }
+        }
+        
+        function drawCar(x, v) {
+            const x_screen = worldToScreen(x);
+            const y_road = ui.simCanvas.clientHeight * 0.7;
+            const carHeight = 28;
+            const y_car = y_road - carHeight + 5;
+            const direction = v >= 0 ? 1 : -1;
+
+            simCtx.save();
+            simCtx.translate(x_screen, y_car);
+            simCtx.scale(direction, 1);
+            
+            const bodyGradient = simCtx.createLinearGradient(0, -carHeight, 0, carHeight);
+            bodyGradient.addColorStop(0, '#f87171');
+            bodyGradient.addColorStop(1, '#b91c1c');
+            simCtx.fillStyle = bodyGradient;
+            simCtx.strokeStyle = '#fca5a5';
+            simCtx.lineWidth = 1;
+            simCtx.beginPath();
+            simCtx.moveTo(-CAR_WIDTH/2, carHeight);
+            simCtx.lineTo(-CAR_WIDTH/2, 10);
+            simCtx.quadraticCurveTo(-CAR_WIDTH/2 + 5, -10, -CAR_WIDTH/2 + 20, 0);
+            simCtx.lineTo(CAR_WIDTH/2 - 25, 0);
+            simCtx.bezierCurveTo(CAR_WIDTH/2 - 5, -5, CAR_WIDTH/2, 5, CAR_WIDTH/2, carHeight - 5);
+            simCtx.quadraticCurveTo(CAR_WIDTH/2, carHeight, CAR_WIDTH/2 - 5, carHeight);
+            simCtx.closePath();
+            simCtx.fill();
+            simCtx.stroke();
+
+            simCtx.fillStyle = 'rgba(255,255,255,0.25)';
+            simCtx.beginPath();
+            simCtx.moveTo(-CAR_WIDTH/2 + 20, 2);
+            simCtx.lineTo(CAR_WIDTH/2 - 25, 2);
+            simCtx.bezierCurveTo(CAR_WIDTH/2 - 15, 5, CAR_WIDTH/2 - 25, 12, CAR_WIDTH/2 - 30, 12);
+            simCtx.lineTo(-CAR_WIDTH/2 + 15, 12);
+            simCtx.closePath();
+            simCtx.fill();
+
+            const windowGradient = simCtx.createLinearGradient(0, 0, 0, -carHeight);
+            windowGradient.addColorStop(0, '#60a5fa');
+            windowGradient.addColorStop(1, '#1e3a8a');
+            simCtx.fillStyle = windowGradient;
+            simCtx.strokeStyle = '#93c5fd';
+            simCtx.beginPath();
+            simCtx.moveTo(-CAR_WIDTH/2 + 22, 2);
+            simCtx.lineTo(CAR_WIDTH/2 - 27, 2);
+            simCtx.lineTo(CAR_WIDTH/2 - 33, -14);
+            simCtx.lineTo(-CAR_WIDTH/2 + 27, -14);
+            simCtx.closePath();
+            simCtx.fill();
+            simCtx.stroke();
+            
+            simCtx.fillStyle = direction > 0 ? '#fef08a' : '#fb7185';
+            simCtx.beginPath();
+            simCtx.ellipse(direction > 0 ? CAR_WIDTH/2 - 2 : -CAR_WIDTH/2 + 2, carHeight - 8, 4, 2.5, 0, 0, Math.PI * 2);
+            simCtx.fill();
+
+            const drawWheel = (offsetX) => {
+                simCtx.save();
+                simCtx.translate(offsetX, carHeight - WHEEL_RADIUS);
+                simCtx.rotate(wheelRotation * direction);
+                simCtx.fillStyle = '#1f2937';
+                simCtx.beginPath();
+                simCtx.arc(0, 0, WHEEL_RADIUS, 0, Math.PI * 2);
+                simCtx.fill();
+                simCtx.fillStyle = '#d1d5db';
+                simCtx.strokeStyle = '#4b5563';
+                simCtx.lineWidth = 1;
+                simCtx.beginPath();
+                simCtx.arc(0, 0, WHEEL_RADIUS * 0.7, 0, Math.PI * 2);
+                simCtx.fill();
+                simCtx.stroke();
+                for (let i = 0; i < 5; i++) {
+                    simCtx.beginPath();
+                    simCtx.moveTo(0, 0);
+                    simCtx.lineTo(0, WHEEL_RADIUS * 0.7);
+                    simCtx.rotate(Math.PI * 2 / 5);
+                    simCtx.stroke();
+                }
+                simCtx.restore();
+            };
+            drawWheel(-CAR_WIDTH/3);
+            drawWheel(CAR_WIDTH/3);
+
+            simCtx.restore();
+        }
+        
+        function drawVectors(x, v, acc) {
+            const x_screen = worldToScreen(x);
+            const y_base = ui.simCanvas.clientHeight * 0.7 - 65;
+            const vectorScale = 6;
+            
+            const drawArrowWithOutline = (fromx, fromy, tox, toy, color, label) => {
+                simCtx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+                simCtx.lineWidth = 4;
+                drawArrow(fromx, fromy, tox, toy);
+                simCtx.font = '16px Inter';
+                simCtx.strokeText(label, tox + (tox > fromx ? 10 : -10), fromy + 5);
+                
+                simCtx.strokeStyle = color;
+                simCtx.fillStyle = color;
+                simCtx.lineWidth = 2;
+                drawArrow(fromx, fromy, tox, toy);
+                simCtx.font = '14px Inter';
+                simCtx.fillText(label, tox + (tox > fromx ? 10 : -10), fromy + 5);
+            };
+
+            if (Math.abs(v) > 0.1) {
+                drawArrowWithOutline(x_screen, y_base, x_screen + v * vectorScale, y_base, '#4ade80', 'v');
+            }
+            if (Math.abs(acc) > 0.05) {
+                drawArrowWithOutline(x_screen, y_base - 15, x_screen + acc * vectorScale * 2, y_base - 15, '#f472b6', 'a');
+            }
+        }
+
+        function drawArrow(fromx, fromy, tox, toy) {
+            const headlen = 10; const dx = tox - fromx; const dy = toy - fromy; const angle = Math.atan2(dy, dx);
+            simCtx.beginPath(); simCtx.moveTo(fromx, fromy); simCtx.lineTo(tox, toy);
+            simCtx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            simCtx.moveTo(tox, toy); simCtx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            simCtx.stroke();
+        }
+
+        function drawDataTable() {
+            if (!showTable) return;
+            const canvasWidth = ui.simCanvas.clientWidth;
+            const x = canvasWidth - 320;
+            const y = 40;
+            const rowHeight = 25;
+            const headerHeight = 30;
+            const tableHeight = headerHeight + tableData.length * rowHeight;
+            
+            simCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            simCtx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            simCtx.lineWidth = 1;
+            simCtx.beginPath();
+            simCtx.roundRect(x, y, 300, tableHeight + 10, [10]);
+            simCtx.fill();
+            simCtx.stroke();
+
+            simCtx.fillStyle = 'white';
+            simCtx.font = 'bold 14px Inter';
+            simCtx.textAlign = 'center';
+            simCtx.fillText('t (s)', x + 50, y + 22);
+            simCtx.fillText('s (m)', x + 150, y + 22);
+            simCtx.fillText('v (m/s)', x + 250, y + 22);
+
+            simCtx.font = '14px Inter';
+            tableData.forEach((data, index) => {
+                const rowY = y + headerHeight + (index * rowHeight) + 5;
+                simCtx.fillText(data.t.toFixed(2), x + 50, rowY);
+                simCtx.fillText(data.s.toFixed(2), x + 150, rowY);
+                simCtx.fillText(data.v.toFixed(2), x + 250, rowY);
+            });
+        }
+
+        function updateGraphs() {
+            if (ui.graphsContainer.classList.contains('hidden')) return;
+            const charts = [xChart, vChart, aChart];
+            const dataPoints = [position, velocity, a];
+            charts.forEach((chart, index) => {
+                chart.data.labels.push(time.toFixed(1));
+                chart.data.datasets[0].data.push(dataPoints[index].toFixed(2));
+                if (chart.data.labels.length > 200) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
+                chart.update('none');
+            });
+        }
+        
+        function updateWorldBounds() {
+            const totalDist = parseFloat(ui.totalDistanceSlider.value);
+            worldMin = -totalDist / 2;
+            worldMax = totalDist / 2;
+            worldWidth = totalDist;
+            
+            ui.totalDistanceValue.textContent = `${totalDist.toFixed(0)} m`;
+            ui.x0Slider.min = worldMin;
+            ui.x0Slider.max = worldMax;
+            
+            if (parseFloat(ui.x0Slider.value) < worldMin) ui.x0Slider.value = worldMin;
+            if (parseFloat(ui.x0Slider.value) > worldMax) ui.x0Slider.value = worldMax;
+        }
+
+        function update(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            clouds.forEach(cloud => {
+                cloud.x += cloud.speed * deltaTime;
+                if (cloud.x - cloud.size * 2 > ui.simCanvas.clientWidth) {
+                    cloud.x = -cloud.size * 2;
+                }
+            });
+
+            if (isRunning) {
+                time += deltaTime;
+                position = x0 + v0 * time + 0.5 * a * time * time;
+                velocity = v0 + a * time;
+                wheelRotation += (velocity * deltaTime) / (WHEEL_RADIUS / 10);
+
+                ui.timerDisplay.textContent = `${time.toFixed(2)} s`;
+
+                if (Math.floor(time) > lastTableLogTime) {
+                    lastTableLogTime = Math.floor(time);
+                    tableData.push({ t: lastTableLogTime, s: position, v: velocity });
+                    if (tableData.length > 5) tableData.shift();
+                }
+
+                if (timestamp - lastGraphUpdateTime > 100) { 
+                    updateGraphs();
+                    lastGraphUpdateTime = timestamp;
+                }
+
+                const carHalfWidth = (CAR_WIDTH / ui.simCanvas.clientWidth) * worldWidth / 2;
+                if (position + carHalfWidth >= worldMax) {
+                    position = worldMax - carHalfWidth;
+                    isRunning = false;
+                    ui.playPauseBtn.textContent = 'Finalizado';
+                } else if (position - carHalfWidth <= worldMin) {
+                    position = worldMin + carHalfWidth;
+                    isRunning = false;
+                    ui.playPauseBtn.textContent = 'Finalizado';
+                }
+            }
+            draw();
+            animationFrameId = requestAnimationFrame(update);
+        }
+
+        function draw() {
+            simCtx.clearRect(0, 0, ui.simCanvas.clientWidth, ui.simCanvas.clientHeight);
+            drawScenery(); 
+            drawCar(position, velocity); 
+            drawVectors(position, velocity, a);
+            drawDataTable();
+        }
+
+        function toggleControls(disabled) {
+            sliders.forEach(slider => slider.disabled = disabled);
+        }
+
+        function reset() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            isRunning = false;
+            ui.playPauseBtn.textContent = 'Iniciar';
+            lastTimestamp = 0; time = 0; wheelRotation = 0;
+            tableData = []; lastTableLogTime = -1;
+            lastGraphUpdateTime = 0;
+            
+            toggleControls(false);
+            updateWorldBounds();
+
+            x0 = parseFloat(ui.x0Slider.value); v0 = parseFloat(ui.v0Slider.value); a = parseFloat(ui.aSlider.value);
+            position = x0; velocity = v0;
+            ui.timerDisplay.textContent = '0.00 s';
+            ui.x0Value.textContent = `${x0.toFixed(1)} m`; ui.v0Value.textContent = `${v0.toFixed(1)} m/s`; ui.aValue.textContent = `${a.toFixed(1)} m/s²`;
+            if(xChart) {
+                [xChart, vChart, aChart].forEach(chart => { chart.data.labels = []; chart.data.datasets[0].data = []; chart.update(); });
+            }
+            
+            animationFrameId = requestAnimationFrame(update);
+        }
+
+        // --- Event Listeners ---
+        ui.playPauseBtn.addEventListener('click', () => {
+            if (ui.playPauseBtn.textContent === 'Finalizado') return;
+            isRunning = !isRunning;
+            if (isRunning) {
+                if (ui.playPauseBtn.textContent === 'Iniciar') {
+                    reset();
+                    isRunning = true;
+                }
+                lastTimestamp = performance.now();
+                ui.playPauseBtn.textContent = 'Pausa';
+                toggleControls(true);
+            } else {
+                ui.playPauseBtn.textContent = 'Continuar';
+            }
+        });
+
+        ui.resetBtn.addEventListener('click', reset);
+        sliders.forEach(slider => slider.addEventListener('input', reset));
+        
+        ui.toggleTableBtn.addEventListener('click', () => {
+            showTable = !showTable;
+            ui.toggleTableBtn.textContent = showTable ? 'Ocultar Tabla' : 'Ver Tabla';
+        });
+
+        ui.toggleGraphsBtn.addEventListener('click', () => {
+            const isHidden = ui.graphsContainer.classList.toggle('hidden');
+            ui.toggleGraphsBtn.textContent = isHidden ? 'Ver Gráficas' : 'Ocultar Gráficas';
+        });
+
+        // --- Inicialización ---
+        function init() {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            
+            const dpr = window.devicePixelRatio || 1;
+            [ui.simCanvas, ui.posChartCanvas, ui.velChartCanvas, ui.accChartCanvas].forEach(canvas => {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                const ctx = canvas.getContext('2d');
+                ctx.scale(dpr, dpr);
+            });
+            
+            clouds = [];
+            for (let i = 0; i < 5; i++) {
+                clouds.push({
+                    x: Math.random() * ui.simCanvas.clientWidth,
+                    y: Math.random() * ui.simCanvas.clientHeight * 0.4 + 20,
+                    size: Math.random() * 20 + 20,
+                    opacity: Math.random() * 0.3 + 0.4,
+                    speed: Math.random() * 5 + 2
+                });
+            }
+            
+            groundDetails = [];
+            const canvasWidth = ui.simCanvas.clientWidth;
+            const y_road = ui.simCanvas.clientHeight * 0.7;
+            for(let i=0; i < 150; i++){
+                groundDetails.push({
+                    x: Math.random() * canvasWidth,
+                    y: y_road + 10 + Math.random() * 40,
+                    radius: Math.random() * 4,
+                    color: `rgba(0,0,0,${Math.random() * 0.2})`
+                });
+            }
+
+            createCharts();
+            reset();
+        }
+        
+        window.addEventListener('resize', init);
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
