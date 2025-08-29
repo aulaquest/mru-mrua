@@ -92,18 +92,26 @@
                 </div>
                 <canvas id="simulationCanvas" class="w-full h-full"></canvas>
                 <!-- Contenedor de la Tabla HTML -->
-                <div id="dataTableContainer" class="absolute top-4 right-3 bg-black bg-opacity-60 backdrop-blur-sm rounded-lg p-2 text-white z-20 hidden table-container w-[300px]">
-                    <table class="w-full text-center text-sm">
-                        <thead>
-                            <tr class="border-b border-gray-500">
-                                <th class="pb-1">t (s)</th>
-                                <th class="pb-1">s (m)</th>
-                                <th class="pb-1">v (m/s)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dataTableBody">
-                        </tbody>
-                    </table>
+                <div id="dataTableContainer" class="absolute top-4 right-3 bg-black bg-opacity-60 backdrop-blur-sm rounded-lg p-2 text-white z-20 hidden w-[300px]">
+                    <div class="table-container">
+                        <table class="w-full text-center text-sm">
+                            <thead>
+                                <tr class="border-b border-gray-500">
+                                    <th class="pb-1">t (s)</th>
+                                    <th class="pb-1">s (m)</th>
+                                    <th class="pb-1">v (m/s)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dataTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Contenedor del botón de descarga -->
+                    <div id="downloadContainer" class="mt-2 text-center hidden">
+                        <a id="downloadCsvBtn" download="datos_simulacion.csv" class="text-xs bg-green-600 hover:bg-green-700 text-white font-semibold py-1 px-3 rounded-md transition-all cursor-pointer">
+                            Descargar CSV
+                        </a>
+                    </div>
                 </div>
             </div>
             
@@ -180,6 +188,8 @@
             graphsContainer: document.getElementById('graphsContainer'),
             dataTableContainer: document.getElementById('dataTableContainer'),
             dataTableBody: document.getElementById('dataTableBody'),
+            downloadContainer: document.getElementById('downloadContainer'), // NUEVO
+            downloadCsvBtn: document.getElementById('downloadCsvBtn'),   // NUEVO
             totalDistanceSlider: document.getElementById('totalDistance'),
             totalDistanceValue: document.getElementById('totalDistanceValue'),
             x0Slider: document.getElementById('x0'),
@@ -429,6 +439,26 @@
             simCtx.stroke();
         }
 
+        // --- NUEVA FUNCIÓN ---
+        // Prepara el enlace de descarga con los datos actuales en formato CSV
+        function updateDownloadLink() {
+            if (tableData.length === 0) return;
+
+            const headers = "t (s),s (m),v (m/s)";
+            const rows = tableData.map(row => 
+                [row.t.toFixed(2), row.s.toFixed(2), row.v.toFixed(2)].join(',')
+            );
+            const csvContent = [headers, ...rows].join("\n");
+            
+            // Crea un Blob (Binary Large Object) para manejar los datos como un archivo
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            // Asigna la URL del Blob al enlace de descarga
+            ui.downloadCsvBtn.href = url;
+        }
+
+        // --- FUNCIÓN MODIFICADA ---
         function updateDataTable() {
             ui.dataTableBody.innerHTML = '';
             tableData.forEach(data => {
@@ -441,7 +471,15 @@
                 ui.dataTableBody.appendChild(row);
             });
             // Auto-scroll to bottom
-            ui.dataTableContainer.scrollTop = ui.dataTableContainer.scrollHeight;
+            ui.dataTableContainer.querySelector('.table-container').scrollTop = ui.dataTableContainer.querySelector('.table-container').scrollHeight;
+
+            // Muestra el botón de descarga si hay datos y actualiza el enlace
+            if (tableData.length > 1) { // Más que el punto inicial t=0
+                ui.downloadContainer.classList.remove('hidden');
+                updateDownloadLink();
+            } else {
+                ui.downloadContainer.classList.add('hidden');
+            }
         }
 
         function updateGraphs() {
@@ -526,6 +564,7 @@
             sliders.forEach(slider => slider.disabled = disabled);
         }
 
+        // --- FUNCIÓN MODIFICADA ---
         function reset() {
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
@@ -537,6 +576,9 @@
             tableData = []; lastTableLogTime = -1;
             lastGraphUpdateTime = 0;
             
+            // Oculta el botón de descarga al reiniciar
+            ui.downloadContainer.classList.add('hidden');
+
             toggleControls(false);
             updateWorldBounds();
 
