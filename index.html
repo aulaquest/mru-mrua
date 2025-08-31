@@ -493,6 +493,36 @@
             });
         }
         
+        // --- NUEVA FUNCIÓN PARA CORREGIR GRÁFICAS ---
+        // Rellena las gráficas con todos los datos de la simulación.
+        // Se llama al hacer visibles las gráficas para asegurar que se muestre el historial completo.
+        function populateGraphsFromData() {
+            if (!xChart) return; // Salir si las gráficas no se han inicializado
+
+            // Limpia los datos anteriores
+            [xChart, vChart, aChart].forEach(chart => {
+                chart.data.labels = [];
+                chart.data.datasets[0].data = [];
+            });
+
+            // Rellena las gráficas usando los datos de la tabla (almacenados cada segundo)
+            tableData.forEach(data => {
+                const timeLabel = data.t.toFixed(1);
+                
+                xChart.data.labels.push(timeLabel);
+                xChart.data.datasets[0].data.push(data.s.toFixed(2));
+                
+                vChart.data.labels.push(timeLabel);
+                vChart.data.datasets[0].data.push(data.v.toFixed(2));
+
+                aChart.data.labels.push(timeLabel);
+                aChart.data.datasets[0].data.push(a.toFixed(2)); // La aceleración es constante
+            });
+            
+            // Actualiza las gráficas para que muestren los nuevos datos
+            [xChart, vChart, aChart].forEach(chart => chart.update());
+        }
+
         function updateWorldBounds() {
             const totalDist = parseFloat(ui.totalDistanceSlider.value);
             worldMin = -totalDist / 2;
@@ -573,7 +603,7 @@
             isRunning = false;
             ui.playPauseBtn.textContent = 'Iniciar';
             lastTimestamp = 0; time = 0; wheelRotation = 0;
-            tableData = []; lastTableLogTime = -1;
+            tableData = []; lastTableLogTime = 0; // FIX: Evita el duplicado de t=0 en la tabla
             lastGraphUpdateTime = 0;
             
             // Oculta el botón de descarga al reiniciar
@@ -622,9 +652,14 @@
             ui.toggleTableBtn.textContent = ui.dataTableContainer.classList.contains('hidden') ? 'Ver Tabla' : 'Ocultar Tabla';
         });
 
+        // Event listener MODIFICADO para arreglar las gráficas
         ui.toggleGraphsBtn.addEventListener('click', () => {
             const isHidden = ui.graphsContainer.classList.toggle('hidden');
             ui.toggleGraphsBtn.textContent = isHidden ? 'Ver Gráficas' : 'Ocultar Gráficas';
+            if (!isHidden) {
+                // Si las gráficas ahora son visibles, las poblamos con los datos completos de la simulación
+                populateGraphsFromData();
+            }
         });
 
         // --- Inicialización ---
@@ -677,3 +712,4 @@
     </script>
 </body>
 </html>
+
