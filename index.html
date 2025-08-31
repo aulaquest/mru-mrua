@@ -188,8 +188,8 @@
             graphsContainer: document.getElementById('graphsContainer'),
             dataTableContainer: document.getElementById('dataTableContainer'),
             dataTableBody: document.getElementById('dataTableBody'),
-            downloadContainer: document.getElementById('downloadContainer'), // NUEVO
-            downloadCsvBtn: document.getElementById('downloadCsvBtn'),   // NUEVO
+            downloadContainer: document.getElementById('downloadContainer'),
+            downloadCsvBtn: document.getElementById('downloadCsvBtn'),
             totalDistanceSlider: document.getElementById('totalDistance'),
             totalDistanceValue: document.getElementById('totalDistanceValue'),
             x0Slider: document.getElementById('x0'),
@@ -439,8 +439,6 @@
             simCtx.stroke();
         }
 
-        // --- NUEVA FUNCIÓN ---
-        // Prepara el enlace de descarga con los datos actuales en formato CSV
         function updateDownloadLink() {
             if (tableData.length === 0) return;
 
@@ -450,15 +448,12 @@
             );
             const csvContent = [headers, ...rows].join("\n");
             
-            // Crea un Blob (Binary Large Object) para manejar los datos como un archivo
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             
-            // Asigna la URL del Blob al enlace de descarga
             ui.downloadCsvBtn.href = url;
         }
 
-        // --- FUNCIÓN MODIFICADA ---
         function updateDataTable() {
             ui.dataTableBody.innerHTML = '';
             tableData.forEach(data => {
@@ -470,11 +465,9 @@
                 `;
                 ui.dataTableBody.appendChild(row);
             });
-            // Auto-scroll to bottom
             ui.dataTableContainer.querySelector('.table-container').scrollTop = ui.dataTableContainer.querySelector('.table-container').scrollHeight;
 
-            // Muestra el botón de descarga si hay datos y actualiza el enlace
-            if (tableData.length > 1) { // Más que el punto inicial t=0
+            if (tableData.length > 1) {
                 ui.downloadContainer.classList.remove('hidden');
                 updateDownloadLink();
             } else {
@@ -482,47 +475,28 @@
             }
         }
 
-        function updateGraphs() {
-            if (ui.graphsContainer.classList.contains('hidden')) return;
+        // --- LÓGICA DE GRÁFICAS CORREGIDA ---
+        // Esta función ahora hace dos cosas:
+        // 1. Siempre recolecta los datos para que el historial esté completo.
+        // 2. Solo intenta dibujar (la parte costosa) si las gráficas son visibles.
+        function updateAndDrawGraphs() {
+            if (!xChart) return;
+            // 1. Recolectar datos
             const charts = [xChart, vChart, aChart];
             const dataPoints = [position, velocity, a];
+            const timeLabel = time.toFixed(2);
+
             charts.forEach((chart, index) => {
-                chart.data.labels.push(time.toFixed(1));
+                chart.data.labels.push(timeLabel);
                 chart.data.datasets[0].data.push(dataPoints[index].toFixed(2));
-                chart.update('none');
             });
+
+            // 2. Dibujar solo si es visible
+            if (!ui.graphsContainer.classList.contains('hidden')) {
+                charts.forEach(chart => chart.update('none'));
+            }
         }
         
-        // --- NUEVA FUNCIÓN PARA CORREGIR GRÁFICAS ---
-        // Rellena las gráficas con todos los datos de la simulación.
-        // Se llama al hacer visibles las gráficas para asegurar que se muestre el historial completo.
-        function populateGraphsFromData() {
-            if (!xChart) return; // Salir si las gráficas no se han inicializado
-
-            // Limpia los datos anteriores
-            [xChart, vChart, aChart].forEach(chart => {
-                chart.data.labels = [];
-                chart.data.datasets[0].data = [];
-            });
-
-            // Rellena las gráficas usando los datos de la tabla (almacenados cada segundo)
-            tableData.forEach(data => {
-                const timeLabel = data.t.toFixed(1);
-                
-                xChart.data.labels.push(timeLabel);
-                xChart.data.datasets[0].data.push(data.s.toFixed(2));
-                
-                vChart.data.labels.push(timeLabel);
-                vChart.data.datasets[0].data.push(data.v.toFixed(2));
-
-                aChart.data.labels.push(timeLabel);
-                aChart.data.datasets[0].data.push(a.toFixed(2)); // La aceleración es constante
-            });
-            
-            // Actualiza las gráficas para que muestren los nuevos datos
-            [xChart, vChart, aChart].forEach(chart => chart.update());
-        }
-
         function updateWorldBounds() {
             const totalDist = parseFloat(ui.totalDistanceSlider.value);
             worldMin = -totalDist / 2;
@@ -540,6 +514,9 @@
         function update(timestamp) {
             if (!lastTimestamp) lastTimestamp = timestamp;
             const deltaTime = (timestamp - lastTimestamp) / 1000;
+            
+            // FIX: Actualizar siempre el timestamp para que el deltaTime sea consistente
+            // y los elementos de fondo (nubes) se muevan a velocidad constante.
             lastTimestamp = timestamp;
 
             clouds.forEach(cloud => {
@@ -550,20 +527,18 @@
             });
 
             if (isRunning) {
+                // lastTimestamp ya no se actualiza aquí, sino globalmente para la función.
                 time += deltaTime;
-                // --- CÁLCULOS PARA LA SIMULACIÓN VISUAL (FLUIDA) ---
+
                 position = x0 + v0 * time + 0.5 * a * time * time;
                 velocity = v0 + a * time;
                 wheelRotation += (velocity * deltaTime) / (WHEEL_RADIUS / 10);
 
                 ui.timerDisplay.textContent = `${time.toFixed(2)} s`;
 
-                // --- BLOQUE MODIFICADO PARA LA TABLA DE DATOS ---
                 if (Math.floor(time) > lastTableLogTime) {
                     lastTableLogTime = Math.floor(time);
                     
-                    // CORRECCIÓN: Se recalculan la posición y la velocidad para el segundo EXACTO
-                    // en lugar de usar los valores del bucle de animación. Esto elimina los decimales incorrectos.
                     const exactPosition = x0 + v0 * lastTableLogTime + 0.5 * a * lastTableLogTime * lastTableLogTime;
                     const exactVelocity = v0 + a * lastTableLogTime;
                     
@@ -571,18 +546,15 @@
                     updateDataTable();
                 }
 
+                // Llamada a la función de gráficas a intervalos regulares
                 if (timestamp - lastGraphUpdateTime > 100) { 
-                    updateGraphs();
+                    updateAndDrawGraphs();
                     lastGraphUpdateTime = timestamp;
                 }
 
                 const carHalfWidth = (CAR_WIDTH / ui.simCanvas.clientWidth) * worldWidth / 2;
-                if (position + carHalfWidth >= worldMax) {
-                    position = worldMax - carHalfWidth;
-                    isRunning = false;
-                    ui.playPauseBtn.textContent = 'Finalizado';
-                } else if (position - carHalfWidth <= worldMin) {
-                    position = worldMin + carHalfWidth;
+                if (position + carHalfWidth >= worldMax || position - carHalfWidth <= worldMin) {
+                    position = Math.max(worldMin + carHalfWidth, Math.min(worldMax - carHalfWidth, position));
                     isRunning = false;
                     ui.playPauseBtn.textContent = 'Finalizado';
                 }
@@ -602,7 +574,6 @@
             sliders.forEach(slider => slider.disabled = disabled);
         }
 
-        // --- FUNCIÓN MODIFICADA ---
         function reset() {
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
@@ -611,10 +582,10 @@
             isRunning = false;
             ui.playPauseBtn.textContent = 'Iniciar';
             lastTimestamp = 0; time = 0; wheelRotation = 0;
-            tableData = []; lastTableLogTime = -1; // FIX: Se reinicia a -1 para que el primer log sea en t=0
+            tableData = []; 
+            lastTableLogTime = -1; 
             lastGraphUpdateTime = 0;
             
-            // Oculta el botón de descarga al reiniciar
             ui.downloadContainer.classList.add('hidden');
 
             toggleControls(false);
@@ -638,23 +609,11 @@
         // --- Event Listeners ---
         ui.playPauseBtn.addEventListener('click', () => {
             if (ui.playPauseBtn.textContent === 'Finalizado') return;
+
             isRunning = !isRunning;
+
             if (isRunning) {
-                // Si es la primera vez que se pulsa "Iniciar" desde un reinicio
-                if (time === 0) {
-                     // Reseteamos las variables para empezar de cero
-                    x0 = parseFloat(ui.x0Slider.value); 
-                    v0 = parseFloat(ui.v0Slider.value); 
-                    a = parseFloat(ui.aSlider.value);
-                    position = x0; 
-                    velocity = v0;
-                    tableData = [{ t: 0, s: position, v: velocity }]; // Empezar con datos limpios
-                    updateDataTable();
-                     if(xChart) {
-                        [xChart, vChart, aChart].forEach(chart => { chart.data.labels = []; chart.data.datasets[0].data = []; chart.update(); });
-                    }
-                }
-                lastTimestamp = performance.now() - (time * 1000); // Sincroniza el tiempo si se pausa y reanuda
+                lastTimestamp = performance.now();
                 ui.playPauseBtn.textContent = 'Pausa';
                 toggleControls(true);
             } else {
@@ -670,13 +629,15 @@
             ui.toggleTableBtn.textContent = ui.dataTableContainer.classList.contains('hidden') ? 'Ver Tabla' : 'Ocultar Tabla';
         });
 
-        // Event listener MODIFICADO para arreglar las gráficas
+        // --- LISTENER DE GRÁFICAS CORREGIDO ---
         ui.toggleGraphsBtn.addEventListener('click', () => {
             const isHidden = ui.graphsContainer.classList.toggle('hidden');
             ui.toggleGraphsBtn.textContent = isHidden ? 'Ver Gráficas' : 'Ocultar Gráficas';
+
+            // Cuando se muestran, haz un redibujado completo para que aparezca
+            // todo lo que se recolectó mientras estaban ocultas.
             if (!isHidden) {
-                // Si las gráficas ahora son visibles, las poblamos con los datos completos de la simulación
-                populateGraphsFromData();
+                [xChart, vChart, aChart].forEach(chart => chart.update());
             }
         });
 
@@ -730,3 +691,5 @@
     </script>
 </body>
 </html>
+
+
