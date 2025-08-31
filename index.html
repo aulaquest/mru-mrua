@@ -551,15 +551,23 @@
 
             if (isRunning) {
                 time += deltaTime;
+                // --- CÁLCULOS PARA LA SIMULACIÓN VISUAL (FLUIDA) ---
                 position = x0 + v0 * time + 0.5 * a * time * time;
                 velocity = v0 + a * time;
                 wheelRotation += (velocity * deltaTime) / (WHEEL_RADIUS / 10);
 
                 ui.timerDisplay.textContent = `${time.toFixed(2)} s`;
 
+                // --- BLOQUE MODIFICADO PARA LA TABLA DE DATOS ---
                 if (Math.floor(time) > lastTableLogTime) {
                     lastTableLogTime = Math.floor(time);
-                    tableData.push({ t: lastTableLogTime, s: position, v: velocity });
+                    
+                    // CORRECCIÓN: Se recalculan la posición y la velocidad para el segundo EXACTO
+                    // en lugar de usar los valores del bucle de animación. Esto elimina los decimales incorrectos.
+                    const exactPosition = x0 + v0 * lastTableLogTime + 0.5 * a * lastTableLogTime * lastTableLogTime;
+                    const exactVelocity = v0 + a * lastTableLogTime;
+                    
+                    tableData.push({ t: lastTableLogTime, s: exactPosition, v: exactVelocity });
                     updateDataTable();
                 }
 
@@ -603,7 +611,7 @@
             isRunning = false;
             ui.playPauseBtn.textContent = 'Iniciar';
             lastTimestamp = 0; time = 0; wheelRotation = 0;
-            tableData = []; lastTableLogTime = 0; // FIX: Evita el duplicado de t=0 en la tabla
+            tableData = []; lastTableLogTime = -1; // FIX: Se reinicia a -1 para que el primer log sea en t=0
             lastGraphUpdateTime = 0;
             
             // Oculta el botón de descarga al reiniciar
@@ -632,11 +640,21 @@
             if (ui.playPauseBtn.textContent === 'Finalizado') return;
             isRunning = !isRunning;
             if (isRunning) {
-                if (ui.playPauseBtn.textContent === 'Iniciar') {
-                    reset();
-                    isRunning = true;
+                // Si es la primera vez que se pulsa "Iniciar" desde un reinicio
+                if (time === 0) {
+                     // Reseteamos las variables para empezar de cero
+                    x0 = parseFloat(ui.x0Slider.value); 
+                    v0 = parseFloat(ui.v0Slider.value); 
+                    a = parseFloat(ui.aSlider.value);
+                    position = x0; 
+                    velocity = v0;
+                    tableData = [{ t: 0, s: position, v: velocity }]; // Empezar con datos limpios
+                    updateDataTable();
+                     if(xChart) {
+                        [xChart, vChart, aChart].forEach(chart => { chart.data.labels = []; chart.data.datasets[0].data = []; chart.update(); });
+                    }
                 }
-                lastTimestamp = performance.now();
+                lastTimestamp = performance.now() - (time * 1000); // Sincroniza el tiempo si se pausa y reanuda
                 ui.playPauseBtn.textContent = 'Pausa';
                 toggleControls(true);
             } else {
@@ -712,4 +730,3 @@
     </script>
 </body>
 </html>
-
